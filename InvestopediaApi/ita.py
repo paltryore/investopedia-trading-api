@@ -7,7 +7,7 @@ import re
 
 Status = namedtuple("Status", "account_val buying_power cash annual_return")
 Portfolio = namedtuple("Portfolio", "bought options shorted")
-Security = namedtuple("Security", "symbol description quantity purchase_price current_price current_value")
+Security = namedtuple("Security", "symbol description quantity purchase_price current_price current_value gain_loss")
 Trade = namedtuple("Trade", "date_time description symbol quantity")
 
 
@@ -112,19 +112,20 @@ class Account:
 
         if stock_table is not None:
             stock_list = stock_table.find_all("tr")[:-1]
-            stock_list = [s.find_all("td")[-8:-2] for s in stock_list]
+            stock_list = [s.find_all("td")[-8:] for s in stock_list]
+
         else:
             stock_list = []
 
         if option_table is not None:
             option_list = option_table.find_all("tr")[:-1]
-            option_list = [o.find_all("td")[-8:-2] for o in option_list]
+            option_list = [o.find_all("td")[-8:] for o in option_list]
         else:
             option_list = []
 
         if short_table is not None:
             short_list = short_table.find_all("tr")[:-1]
-            short_list = [s.find_all("td")[-8:-2] for s in short_list]
+            short_list = [s.find_all("td")[-8:] for s in short_list]
         else:
             short_list = []
 
@@ -132,42 +133,48 @@ class Account:
         options = []
         shorted = []
 
+        # regex for gain/loss field: all characters up until first open parentheses
+        regexp = r"(.*?)(?=\()"
+
         for stock_data in stock_list:
             stock_data_text = [s.getText() for s in stock_data]
-            if len(stock_data_text) == 6:
+            if len(stock_data_text) == 8:
                 sec = Security(
                     symbol=stock_data_text[0],
                     description=stock_data_text[1],
                     quantity=int(stock_data_text[2]),
                     purchase_price=float(stock_data_text[3][1:].replace(",", "")),
                     current_price=float(stock_data_text[4][1:].replace(",", "")),
-                    current_value=float(stock_data_text[5][1:].replace(",", ""))
+                    current_value=float(stock_data_text[5][1:].replace(",", "")),
+                    gain_loss=float(re.search(regexp, stock_data_text[7][1:].replace(",", "")).group())
                 )
                 bought.append(sec)
 
         for option_data in option_list:
             option_data_text = [o.getText() for o in option_data]
-            if len(option_data_text) == 6:
+            if len(option_data_text) == 8:
                 sec = Security(
                     symbol=option_data_text[0],
                     description=option_data_text[1],
                     quantity=int(option_data_text[2]),
                     purchase_price=float(option_data_text[3][1:].replace(",", "")),
                     current_price=float(option_data_text[4][1:].replace(",", "")),
-                    current_value=float(option_data_text[5][1:].replace(",", ""))
+                    current_value=float(option_data_text[5][1:].replace(",", "")),
+                    gain_loss=float(re.search(regexp, option_data_text[7][1:].replace(",", "")).group())
                 )
                 options.append(sec)
 
         for short_data in short_list:
             short_data_text = [s.getText() for s in short_data]
-            if len(short_data_text) == 6:
+            if len(short_data_text) == 8:
                 sec = Security(
                     symbol=short_data_text[0],
                     description=short_data_text[1],
                     quantity=int(short_data_text[2]),
                     purchase_price=float(short_data_text[3][1:].replace(",", "")),
                     current_price=float(short_data_text[4][1:].replace(",", "")),
-                    current_value=float(short_data_text[5][1:].replace(",", ""))
+                    current_value=float(short_data_text[5][1:].replace(",", "")),
+                    gain_loss=float(re.search(regexp, short_data_text[7][1:].replace(",", "")).group())
                 )
                 shorted.append(sec)
 
